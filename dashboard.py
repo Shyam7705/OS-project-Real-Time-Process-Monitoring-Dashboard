@@ -36,7 +36,7 @@ class ProcessMonitorDashboard:
         summary_frame.pack(fill="x", padx=10, pady=5)
         self.cpu_label = tk.Label(summary_frame, text="Total CPU Usage: 0%", font=("Helvetica", 12, "bold"), bg="#1E1E1E", fg="#BBDEFB")
         self.cpu_label.pack(side="left", padx=20)
-        self.memory_label = tk.Label(summary_frame, text="Total Memory Usage: 0%", font=("Helvetica", 12, "bold"), bg="#1E1E1E", fg="#BBDEFB")
+        self.memory_label = tk.Label(summary_frame, text="Total Memory Usage: 0 GB / 0 GB (0%)", font=("Helvetica", 12, "bold"), bg="#1E1E1E", fg="#BBDEFB")
         self.memory_label.pack(side="left", padx=20)
 
         # Search bar
@@ -77,8 +77,7 @@ class ProcessMonitorDashboard:
         ttk.Button(button_frame, text="Terminate Process", command=self.terminate_selected).pack(side="left", padx=5)
         ttk.Button(button_frame, text="Show Details", command=self.show_details).pack(side="left", padx=5)
         ttk.Button(button_frame, text="Refresh Now", command=self.refresh_now).pack(side="left", padx=5)
-        # Add Deselect button
-        ttk.Button(button_frame, text="Deselect", command=self.deselect_process).pack(side="left", padx=5)
+        ttk.Button(button_frame, text="Deselect", command=self.deselect_process).pack(side="left", padx=5)  # Added from previous request
 
         # Graphs
         graph_frame = tk.Frame(root, bg="#121212", highlightbackground="#0288D1", highlightthickness=2, relief="raised")
@@ -122,12 +121,6 @@ class ProcessMonitorDashboard:
             self.selected_pid = None
             print("No selection")
 
-    def deselect_process(self):
-        """Deselect the currently selected process in the table."""
-        self.tree.selection_remove(self.tree.selection())
-        self.selected_pid = None
-        print("Process deselected")
-
     def update_data_loop(self):
         while self.running:
             self.root.after(0, self.update_data_once)
@@ -141,9 +134,12 @@ class ProcessMonitorDashboard:
 
             # Update system summary
             total_cpu = psutil.cpu_percent(interval=1)
-            total_memory = psutil.virtual_memory().percent
+            memory = psutil.virtual_memory()
+            total_memory_percent = memory.percent
+            used_memory_gb = memory.used / (1024 ** 3)  # Convert bytes to GB
+            total_memory_gb = memory.total / (1024 ** 3)  # Convert bytes to GB
             self.cpu_label.config(text=f"Total CPU Usage: {total_cpu}%")
-            self.memory_label.config(text=f"Total Memory Usage: {total_memory}%")
+            self.memory_label.config(text=f"Total Memory Usage: {used_memory_gb:.2f} GB / {total_memory_gb:.2f} GB ({total_memory_percent}%)")
 
             # Preserve selection
             selected_pid = self.selected_pid
@@ -171,7 +167,7 @@ class ProcessMonitorDashboard:
             current_time = time.time()
             if current_time - self.last_graph_update >= 4:
                 self.cpu_data.append(total_cpu)
-                self.memory_data.append(total_memory)
+                self.memory_data.append(total_memory_percent)  # Still using percentage for graph
                 if len(self.cpu_data) > 60:
                     self.cpu_data.pop(0)
                     self.memory_data.pop(0)
@@ -308,6 +304,12 @@ class ProcessMonitorDashboard:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to fetch process details: {str(e)}")
             self.update_data_once()
+
+    def deselect_process(self):
+        print("Deselect button clicked")
+        self.tree.selection_remove(self.tree.selection())
+        self.selected_pid = None
+        print("Selection cleared")
 
     def on_closing(self):
         self.running = False

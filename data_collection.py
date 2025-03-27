@@ -11,12 +11,15 @@ class ProcessDataCollector:
 
     def get_process_data(self):
         if self.is_collecting:
+            while self.is_collecting:
+                time.sleep(0.1)
             return self.processes
 
         self.is_collecting = True
         thread = Thread(target=self._collect_data)
         thread.daemon = True
         thread.start()
+        thread.join()
         return self.processes
 
     def _collect_data(self):
